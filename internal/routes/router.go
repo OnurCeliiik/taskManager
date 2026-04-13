@@ -48,12 +48,12 @@ func SetupRouter(db *gorm.DB) *gin.Engine {
 		tasks.Use(middleware.AuthMiddleware())
 		{
 			tasks.POST("/create", taskHandler.CreateTask)
-			/*	tasks.GET("/", taskHandler.ListTasks)
+			tasks.GET("/", taskHandler.ListTasks)
 
-				tasks.PUT("/:id", middleware.TaskOwnershipMiddleware(taskService), taskHandler.UpdateTask)
-				tasks.GET("/:id", middleware.TaskOwnershipMiddleware(taskService), taskHandler.GetTask)
-				tasks.DELETE("/:id", middleware.TaskOwnershipMiddleware(taskService), taskHandler.DeleteTask)
-			*/
+			tasks.PUT("/:id", middleware.TaskOwnershipMiddleware(taskService), taskHandler.UpdateTask)
+			tasks.GET("/:id", middleware.TaskOwnershipMiddleware(taskService), taskHandler.GetTask)
+			tasks.DELETE("/:id", middleware.TaskOwnershipMiddleware(taskService), taskHandler.DeleteTask)
+
 		}
 	}
 

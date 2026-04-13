@@ -1,27 +1,36 @@
 package task
 
-import "github.com/google/uuid"
+import (
+	"errors"
+	"time"
+
+	"github.com/google/uuid"
+	"gorm.io/gorm"
+)
 
 type TaskService interface {
-	CreateTask(req CreateTaskRequest, userID uuid.UUID) (*Task, error)
-	GetTaskByID(id uuid.UUID) (*Task, error)
-	UpdateTask(id uuid.UUID, req UpdateTaskRequest) (*Task, error)
-	DeleteTask(id uuid.UUID) error
+	CreateTask(req CreateTaskRequest, userID uuid.UUID) (*TaskResponse, error)
+	ListTasks(userID uuid.UUID, limit, offset int, status, category string) ([]TaskResponse, error)
+	GetTaskByID(id uuid.UUID) (*TaskResponse, error)
+	UpdateTask(taskID uuid.UUID, userID uuid.UUID, req UpdateTaskRequest) (*TaskResponse, error)
+	DeleteTask(taskID uuid.UUID, userID uuid.UUID) error
 }
 
 type taskService struct {
-	repository TaskRepository
+	repository Repository
 }
 
-func NewTaskService(repository TaskRepository) TaskService {
+func NewTaskService(repository Repository) TaskService {
 	return &taskService{repository: repository}
 }
 
-func (s *taskService) GetTaskByID(id uuid.UUID) (*Task, error) {
-	return s.repository.GetTaskByID(id)
-}
+var (
+	ErrTaskNotFound      = errors.New("task not found")
+	ErrTaskUnauthorized  = errors.New("task not owned by user")
+	ErrInvalidTaskStatus = errors.New("invalid task status")
+)
 
-func (s *taskService) CreateTask(req CreateTaskRequest, userID uuid.UUID) (*Task, error) {
+func (s *taskService) CreateTask(req CreateTaskRequest, userID uuid.UUID) (*TaskResponse, error) {
 	task := &Task{
 		UserID:      userID,
 		Title:       req.Title,
@@ -30,20 +39,52 @@ func (s *taskService) CreateTask(req CreateTaskRequest, userID uuid.UUID) (*Task
 		Status:      "pending",
 	}
 
-	if err := s.repository.CreateTask(task); err != nil {
-		return nil, err
-	}
-	return task, nil
-}
-
-func (s *taskService) UpdateTask(id uuid.UUID, req UpdateTaskRequest) (*Task, error) {
-	// Fetch existing task
-	task, err := s.repository.GetTaskByID(id)
+	created, err := s.repository.CreateTask(task)
 	if err != nil {
 		return nil, err
 	}
 
-	// Update fields if provided
+	return toTaskResponse(created), nil
+}
+
+func (s *taskService) ListTasks(userID uuid.UUID, limit, offset int, status, category string) ([]TaskResponse, error) {
+	tasks, err := s.repository.ListTasksByUserID(userID, limit, offset, status, category)
+	if err != nil {
+		return nil, err
+	}
+
+	response := make([]TaskResponse, 0, len(tasks))
+	for _, task := range tasks {
+		response = append(response, *toTaskResponse(&task))
+	}
+	return response, nil
+}
+
+func (s *taskService) GetTaskByID(id uuid.UUID) (*TaskResponse, error) {
+	task, err := s.repository.GetTaskByID(id)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, ErrTaskNotFound
+		}
+		return nil, err
+	}
+
+	return toTaskResponse(task), nil
+}
+
+func (s *taskService) UpdateTask(taskID uuid.UUID, userID uuid.UUID, req UpdateTaskRequest) (*TaskResponse, error) {
+	task, err := s.repository.GetTaskByID(taskID)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, ErrTaskNotFound
+		}
+		return nil, err
+	}
+
+	if task.UserID != userID {
+		return nil, ErrTaskUnauthorized
+	}
+
 	if req.Title != nil {
 		task.Title = *req.Title
 	}
@@ -54,20 +95,48 @@ func (s *taskService) UpdateTask(id uuid.UUID, req UpdateTaskRequest) (*Task, er
 		task.Category = *req.Category
 	}
 	if req.Status != nil {
-		task.Status = *req.Status
+		status := *req.Status
+		if status != "pending" && status != "in_progress" && status != "completed" {
+			return nil, ErrInvalidTaskStatus
+		}
+		task.Status = status
 	}
 
-	// Save updates
-	if err := s.repository.UpdateTask(id, task); err != nil {
+	task.UpdatedAt = time.Now()
+
+	updated, err := s.repository.UpdateTask(task)
+	if err != nil {
 		return nil, err
 	}
-	return task, nil
+
+	return toTaskResponse(updated), nil
 }
 
-func (s *taskService) DeleteTask(id uuid.UUID) error {
-	// Check if task exists before deletion
-	if _, err := s.repository.GetTaskByID(id); err != nil {
+func (s *taskService) DeleteTask(taskID uuid.UUID, userID uuid.UUID) error {
+	task, err := s.repository.GetTaskByID(taskID)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return ErrTaskNotFound
+		}
 		return err
 	}
-	return s.repository.DeleteTask(id)
+
+	if task.UserID != userID {
+		return ErrTaskUnauthorized
+	}
+
+	return s.repository.DeleteTask(taskID)
+}
+
+func toTaskResponse(task *Task) *TaskResponse {
+	return &TaskResponse{
+		ID:          task.ID,
+		UserID:      task.UserID,
+		Title:       task.Title,
+		Description: task.Description,
+		Category:    task.Category,
+		Status:      task.Status,
+		CreatedAt:   task.CreatedAt.Format(time.RFC3339),
+		UpdatedAt:   task.UpdatedAt.Format(time.RFC3339),
+	}
 }
