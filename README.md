@@ -60,4 +60,25 @@ A production-ready REST API for managing tasks with secure user authentication, 
 
 ## Authentication
 
-All endpoints except `/healthz`, `/api/v1/auth/*` require a valid JWT token in the `Authorization` header:
+All endpoints except `/healthz`, `/api/v1/auth/*` require a valid JWT token in the `Authorization` header: Authorization <your_jwt_token>
+
+## Tech Stack
+
+- **Language:** Go 1.25.5
+- **Framework:** Gin v1.12.0
+- **Database:** PostgreSQL 15
+- **ORM:** GORM v1.31.1
+- **Authentication:** golang-jwt/jwt/v5
+- **Security:** bcrypt for password hashing
+- **Logging:** logrus for structured JSON logging
+- **Rate Limiting:** golang.org/x/time/rate
+- **Containerization:** Docker & Docker Compose
+
+## Middleware Stack
+1. Recovery - Panic recovery and error handling
+2. Gin Logger - Default HTTP logging
+3. Rate Limiting - Global request throttling
+4. Logging - Structured JSON request logging
+5. Authentication - JWT validation (protected routes only)
+6. Task Ownership - Ensure users can only access their own tasks
+7. Authorization - Role-based access control
