@@ -5,6 +5,11 @@ go 1.25.5
 require github.com/google/uuid v1.6.0
 
 require (
+	github.com/sirupsen/logrus v1.9.4 // indirect
+	golang.org/x/time v0.15.0 // indirect
+)
+
+require (
 	github.com/bytedance/gopkg v0.1.4 // indirect
 	github.com/bytedance/sonic v1.15.0 // indirect
 	github.com/bytedance/sonic/loader v0.5.1 // indirect

@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"task-manager/internal/database"
 	"task-manager/internal/routes"
+	"task-manager/utils/logger"
 
 	"github.com/joho/godotenv"
 )
@@ -15,7 +16,12 @@ func main() {
 		log.Fatal("Error loading .env file")
 	}
 
+	logger.Init()
+
+	logger.Info("Starting task-manager API", "version", "1.0.0")
+
 	db := database.Connect()
+	logger.Info("Database connected successfully")
 
 	r := routes.SetupRouter(db)
 
@@ -24,7 +30,8 @@ func main() {
 		Handler: r,
 	}
 
+	logger.Info("Server listening", "port", "8080")
 	if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-		log.Fatal(err)
+		logger.Error("Server error", "error", err.Error())
 	}
 }

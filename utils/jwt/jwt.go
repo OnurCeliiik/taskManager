@@ -2,6 +2,7 @@ package jwt
 
 import (
 	"os"
+	"sync"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -15,7 +16,10 @@ type Claims struct {
 	jwt.RegisteredClaims
 }
 
-var jwtKey = []byte(getSecret())
+var (
+	jwtKey []byte
+	once   sync.Once
+)
 
 func getSecret() string {
 	secret := os.Getenv("JWT_SECRET")
@@ -25,7 +29,15 @@ func getSecret() string {
 	return secret
 }
 
+func initJWTKey() {
+	once.Do(func() {
+		jwtKey = []byte(getSecret())
+	})
+}
+
 func GenerateToken(userID uuid.UUID, email string, role string) (string, error) {
+	initJWTKey()
+
 	expirationTime := time.Now().Add(15 * time.Minute)
 
 	claims := Claims{
@@ -45,6 +57,8 @@ func GenerateToken(userID uuid.UUID, email string, role string) (string, error) 
 }
 
 func ValidateToken(tokenString string) (*Claims, error) {
+	initJWTKey()
+
 	token, err := jwt.ParseWithClaims(tokenString, &Claims{}, func(t *jwt.Token) (any, error) {
 		if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, jwt.ErrSignatureInvalid

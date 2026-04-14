@@ -33,15 +33,21 @@ func SetupRouter(db *gorm.DB) *gin.Engine {
 	// This creates a new Gin router with default middleware, although I don't know how to implement middleware.
 	r := gin.Default()
 
+	r.Use(middleware.RateLimitMiddleware())
+	r.Use(middleware.LoggingMiddleware())
+
 	// the health check, can be improved further down the line
 	r.GET("/healthz", healthHandler.Check)
 
 	api := r.Group("/api/v1")
 	{
 		auth := api.Group("/auth")
+		auth.Use(middleware.StrictRateLimitMiddleware())
 		{
 			auth.POST("/register", authHandler.RegisterUser)
 			auth.POST("/login", authHandler.LoginUser)
+			auth.POST("/forgot-password", authHandler.ForgotPassword)
+			auth.POST("/reset-password", authHandler.ResetPassword)
 		}
 
 		users := api.Group("/users")

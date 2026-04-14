@@ -11,6 +11,7 @@ type Repository interface {
 	GetUserByID(id uuid.UUID) (*User, error)
 	UpdateUser(user *User) (*User, error)
 	DeleteUser(ID uuid.UUID) error
+	GetUserByResetToken(token string) (*User, error)
 }
 
 type repository struct {
@@ -53,4 +54,15 @@ func (r *repository) UpdateUser(user *User) (*User, error) {
 
 func (r *repository) DeleteUser(ID uuid.UUID) error {
 	return r.db.Delete(&User{}, "id = ?", ID).Error
+}
+
+func (r *repository) GetUserByResetToken(token string) (*User, error) {
+	var user User
+	if err := r.db.
+		Where("reset_token = ?", token).
+		First(&user).
+		Error; err != nil {
+		return nil, err
+	}
+	return &user, nil
 }
