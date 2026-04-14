@@ -9,8 +9,8 @@ type Repository interface {
 	CreateUser(user *User) (*User, error)
 	GetUserByEmail(email string) (*User, error)
 	GetUserByID(id uuid.UUID) (*User, error)
-	// UpdateUser(id string, user *User) (*User, error)
-	// DeleteUser(id string) error
+	UpdateUser(user *User) (*User, error)
+	DeleteUser(ID uuid.UUID) error
 }
 
 type repository struct {
@@ -42,4 +42,15 @@ func (r *repository) GetUserByID(id uuid.UUID) (*User, error) {
 		return nil, err
 	}
 	return &user, nil
+}
+
+func (r *repository) UpdateUser(user *User) (*User, error) {
+	if err := r.db.Save(user).Error; err != nil {
+		return nil, err
+	}
+	return user, nil
+}
+
+func (r *repository) DeleteUser(ID uuid.UUID) error {
+	return r.db.Delete(&User{}, "id = ?", ID).Error
 }

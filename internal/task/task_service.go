@@ -37,6 +37,7 @@ func (s *taskService) CreateTask(req CreateTaskRequest, userID uuid.UUID) (*Task
 		Description: req.Description,
 		Category:    req.Category,
 		Status:      "pending",
+		CreatedAt:   time.Now(),
 	}
 
 	created, err := s.repository.CreateTask(task)

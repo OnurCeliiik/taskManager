@@ -3,6 +3,8 @@ package auth
 import (
 	"errors"
 	"task-manager/internal/users"
+	"task-manager/utils/password"
+	"time"
 
 	"golang.org/x/crypto/bcrypt"
 )
@@ -21,24 +23,30 @@ func NewAuthService(userRepo users.Repository) AuthService {
 }
 
 func (s *authService) RegisterUser(req RegisterUserRequest) (*users.User, error) {
-	// 1. Check if user already exists
+	// 1. Validate password strength
+	if err := password.Validate(req.Password); err != nil {
+		return nil, err
+	}
+
+	// 2. Check if user already exists
 	existing, _ := s.userRepo.GetUserByEmail(req.Email)
 	if existing != nil {
 		return nil, errors.New("user with this email already exists")
 	}
 
-	// 2.Hash the password
+	// 3.Hash the password
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
 	if err != nil {
 		return nil, err
 	}
 
-	// 3. Create user
+	// 4. Create user
 	user, err := s.userRepo.CreateUser(&users.User{
-		Name:     req.Name,
-		Email:    req.Email,
-		Password: string(hashedPassword),
-		Role:     "user", // Default role is "user". Can be modified by an admin later.
+		Name:      req.Name,
+		Email:     req.Email,
+		Password:  string(hashedPassword),
+		Role:      "user", // Default role is "user". Can be modified by an admin later.
+		CreatedAt: time.Now(),
 	})
 	if err != nil {
 		return nil, err

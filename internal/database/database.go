@@ -34,5 +34,9 @@ func Connect() *gorm.DB {
 		task.Task{},
 	)
 
+	if !db.Migrator().HasConstraint(&task.Task{}, "fk_tasks_user") {
+		db.Migrator().CreateConstraint(&task.Task{}, "fk_tasks_user")
+	}
+
 	return db
 }

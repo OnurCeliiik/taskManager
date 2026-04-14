@@ -45,7 +45,8 @@ func AuthMiddleware() gin.HandlerFunc {
 			return
 		}
 
-		c.Set("userID", claims.UserID)
+		c.Set("userID", claims.UserID.String())
+		c.Set("role", claims.Role)
 
 		c.Next()
 
@@ -54,10 +55,6 @@ func AuthMiddleware() gin.HandlerFunc {
 
 func TaskOwnershipMiddleware(taskService task.TaskService) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		// Implement logic to check if the user owns the task
-		// You can extract the user ID from the context and compare it with the task's owner ID
-		// If the user does not own the task, return an unauthorized error
-
 		userIDStr := c.GetString("userID")
 		userID, err := uuid.Parse(userIDStr)
 		if err != nil {
@@ -78,7 +75,7 @@ func TaskOwnershipMiddleware(taskService task.TaskService) gin.HandlerFunc {
 			return
 		}
 
-		task, err := task.TaskService.GetTaskByID(taskService, taskID)
+		taskResp, err := taskService.GetTaskByID(taskID)
 		if err != nil {
 			c.AbortWithStatusJSON(http.StatusNotFound, error.ErrorResponse{
 				Code:    http.StatusNotFound,
@@ -87,10 +84,50 @@ func TaskOwnershipMiddleware(taskService task.TaskService) gin.HandlerFunc {
 			return
 		}
 
-		if task.UserID != userID {
+		if taskResp.UserID != userID {
+			c.AbortWithStatusJSON(http.StatusForbidden, error.ErrorResponse{
+				Code:    http.StatusForbidden,
+				Message: "you do not have permission to access this task",
+			})
+			return
+		}
+
+		c.Next()
+	}
+}
+
+// ensures only admins can access certain endpoints
+func AdminMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		roleStr := c.GetString("role")
+		if roleStr != "admin" {
+			c.AbortWithStatusJSON(http.StatusForbidden, error.ErrorResponse{
+				Code:    http.StatusForbidden,
+				Message: "admin access required",
+			})
+			return
+		}
+		c.Next()
+	}
+}
+
+// restricts routes to a specific role (or admin)
+func AuthorizationMiddleware(requiredRole string) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		userIDStr := c.GetString("userID")
+		if userIDStr == "" {
 			c.AbortWithStatusJSON(http.StatusUnauthorized, error.ErrorResponse{
 				Code:    http.StatusUnauthorized,
-				Message: "you do not have permission to access this task",
+				Message: "user not authenticated",
+			})
+			return
+		}
+
+		roleStr := c.GetString("role")
+		if roleStr != requiredRole && roleStr != "admin" {
+			c.AbortWithStatusJSON(http.StatusForbidden, error.ErrorResponse{
+				Code:    http.StatusForbidden,
+				Message: "insufficient permissions for this action",
 			})
 			return
 		}

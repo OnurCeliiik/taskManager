@@ -19,7 +19,9 @@ API Responsibilities:
 	- Update a task
 	- Delete a task
 
-I will be using Golang. 
-I will startt with net/http package but may switch to Gin or Fiber later.
-For database, will go with postgres, and will be using Gorm for ORM.
-Authentication will be with JWT.
+## Tech Stack
+#### Language: Golang
+#### Framework: Gin
+#### Database: PostgreSQL
+#### Authentication: JWT
+#### Deployment: Docker

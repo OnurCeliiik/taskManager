@@ -1,1 +1,19 @@
+# Environment
 .env
+.env.local
+
+# Build outputs
+task-manager
+dist/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs
+*.log
+
+# Testing
+coverage.out
